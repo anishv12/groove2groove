@@ -79,7 +79,9 @@ class Model:
         # Build the training version of the decoder and the training ops
         self.training_ops = None
         if train_mode:
-            _, self.loss = self.decoder.decode_train(decoder_inputs, decoder_targets)
+         
+            
+            self.loss = contrastive_loss(decoder_targets,decoder_inputs)
             self.training_ops = self._make_train_ops()
 
         # Build the sampling and greedy version of the decoder
@@ -98,6 +100,21 @@ class Model:
             'content_input': inputs, 'style_input': style_inputs,
             'style_embedding': self.style_vector, 'softmax_temperature': self.softmax_temperature,
         }
+    def contrastive_loss(y_true, y_pred, margin=1.0):
+        
+        # Calculate the squared distances
+        squared_distances = tf.square(y_pred)
+    
+        # Calculate the loss for similar pairs (y_true = 1)
+        positive_loss = (1 - y_true) * squared_distances
+    
+        # Calculate the loss for dissimilar pairs (y_true = 0)
+        negative_loss = y_true * tf.square(tf.maximum(margin - y_pred, 0))
+    
+        # Combine both losses
+        total_loss = tf.reduce_mean(positive_loss + negative_loss)
+    
+        return total_loss
 
     def _make_train_ops(self):
         train_op = self._cfg['training'].configure(create_train_op, loss=self.loss)
